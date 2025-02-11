@@ -5,4 +5,5 @@ edition = "2021"
 authors = ["Pete Kubiak <peter.kubiak@dyson.com>"]
 
 [dependencies]
-embedded-hal = "1.0.0"
+thiserror = { version = "2.0.11", default-features = false }
+embedded-hal-async = "*"

@@ -2,11 +2,7 @@
 //!
 #![no_std]
 
-use embedded_hal::{
-    delay::DelayNs,
-    digital::OutputPin,
-    spi::{SpiBus, SpiDevice},
-};
+use embedded_hal_async::{delay::DelayNs, spi::SpiDevice};
 
 pub struct Paa5100je<SPI>
 where
@@ -19,11 +15,11 @@ impl<SPI> Paa5100je<SPI>
 where
     SPI: SpiDevice,
 {
-    pub fn new(spi: SPI, delay_source: &mut impl DelayNs) -> Result<Self, SPI::Error> {
+    pub async fn new(spi: SPI, delay_source: &mut impl DelayNs) -> Result<Self, SPI::Error> {
         let mut instance = Self { spi };
 
-        instance.write(register::POWER_UP_RESET, 0x5A)?;
-        delay_source.delay_ms(20);
+        instance.write(register::POWER_UP_RESET, 0x5A).await?;
+        delay_source.delay_ms(20).await;
 
         Ok(instance)
     }
@@ -33,12 +29,12 @@ impl<SPI> Paa5100je<SPI>
 where
     SPI: SpiDevice,
 {
-    fn write(&mut self, register: u8, value: u8) -> Result<(), SPI::Error> {
-        self.spi.write(&[register, value])
+    async fn write(&mut self, register: u8, value: u8) -> Result<(), SPI::Error> {
+        self.spi.write(&[register, value]).await
     }
 
-    fn read(&mut self, register: u8, buffer: &mut [u8]) -> Result<(), SPI::Error> {
-        self.spi.transfer(buffer, &[register])
+    pub async fn read(&mut self, register: u8, buffer: &mut [u8]) -> Result<(), SPI::Error> {
+        self.spi.transfer(buffer, &[register]).await
     }
 }
 
@@ -46,7 +42,8 @@ trait PixArtSensor {}
 
 impl<SPI> PixArtSensor for Paa5100je<SPI> where SPI: SpiDevice {}
 
-mod register {
+#[allow(dead_code)]
+pub mod register {
     pub const PRODUCT_ID: u8 = 0x00;
     pub const REVISION_ID: u8 = 0x01;
     pub const MOTION: u8 = 0x02;
