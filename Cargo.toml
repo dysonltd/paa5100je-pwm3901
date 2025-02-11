@@ -2,7 +2,7 @@
 name = "paa5100je-pmw3901"
 version = "0.1.0"
 edition = "2021"
-authors = ["Pete Kubiak <peter.kubiak@dyson.com"]
+authors = ["Pete Kubiak <peter.kubiak@dyson.com>"]
 
 [dependencies]
 embedded-hal = "1.0.0"
