@@ -34,33 +34,30 @@ where
         }
 
         instance.calibrate(delay_source).await?;
+
+        let id = instance.id().await?;
         Ok(instance)
     }
 }
 
-impl<SPI> Paa5100je<SPI> where SPI: SpiDevice {}
-
-trait PixArtSensor<SPI: SpiDevice> {
-    async fn write(&mut self, register: u8, value: u8) -> Result<(), SPI::Error>;
-    async fn read(&mut self, register: u8, buffer: &mut [u8]) -> Result<(), SPI::Error>;
-    async fn write_bulk(&mut self, reg_value_pairs: &[(u8, u8)]) -> Result<(), SPI::Error>;
-    async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SPI::Error>;
+struct Id {
+    pub product_id: u8,
+    pub revision: u8,
 }
 
-impl<SPI> PixArtSensor<SPI> for Paa5100je<SPI>
-where
-    SPI: SpiDevice,
-{
+trait PixArtSensor<SPI: SpiDevice> {
+    fn spi(&mut self) -> &mut SPI;
+    async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SPI::Error>;
+
     async fn write(&mut self, register: u8, value: u8) -> Result<(), SPI::Error> {
         trace!("Writing {:02x} to register {:02x}", value, register);
-        self.spi.write(&[register | 0x80, value]).await
+        self.spi().write(&[register | 0x80, value]).await
     }
 
     async fn read(&mut self, register: u8, buffer: &mut [u8]) -> Result<(), SPI::Error> {
-        self.spi
+        self.spi()
             .transaction(&mut [Operation::Write(&[register]), Operation::Read(buffer)])
             .await?;
-        self.spi.transfer(buffer, &[register]).await?;
         trace!("Read {:?} beginning at register {:02x}", buffer, register);
         Ok(())
     }
@@ -71,6 +68,25 @@ where
         }
 
         Ok(())
+    }
+
+    async fn id(&mut self) -> Result<Id, SPI::Error> {
+        let id = Id {
+            product_id: 0,
+            revision: 0,
+        };
+        self.read(register::PRODUCT_ID, &mut [id.product_id, id.revision])
+            .await?;
+        Ok(id)
+    }
+}
+
+impl<SPI> PixArtSensor<SPI> for Paa5100je<SPI>
+where
+    SPI: SpiDevice,
+{
+    fn spi(&mut self) -> &mut SPI {
+        &mut self.spi
     }
 
     async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SPI::Error> {

@@ -6,14 +6,13 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
-use embedded_hal_async::spi::SpiDevice as _;
 use esp_hal::{
     clock::CpuClock,
     gpio::{Level, Output},
     spi::master::Spi,
     timer::{timg::TimerGroup, OneShotTimer},
 };
-use paa5100je_pmw3901::{register, Paa5100je};
+use paa5100je_pmw3901::Paa5100je;
 use {defmt_rtt as _, esp_backtrace as _};
 
 #[esp_hal_embassy::main]
