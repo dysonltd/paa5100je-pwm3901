@@ -46,18 +46,18 @@ async fn main(spawner: Spawner) {
 
     let mut sensor = Paa5100je::new(spi, &mut sensor_timer).await.unwrap();
 
-    let mut buffer = [0u8; 5];
-    sensor.read(register::MOTION, &mut buffer).await.unwrap();
+    // let mut buffer = [0u8; 5];
+    // sensor.read(register::MOTION, &mut buffer).await.unwrap();
 
-    info!("{:?}", buffer);
+    // info!("{:?}", buffer);
 
-    for reg in 0..buffer.len() {
-        sensor
-            .read(register::MOTION + reg as u8, &mut [buffer[reg]])
-            .await
-            .unwrap();
-        info!("{:?}", buffer[reg]);
-    }
+    // for reg in 0..buffer.len() {
+    //     sensor
+    //         .read(register::MOTION + reg as u8, &mut [buffer[reg]])
+    //         .await
+    //         .unwrap();
+    //     info!("{:?}", buffer[reg]);
+    // }
 
     loop {
         // info!("Hello world!");
