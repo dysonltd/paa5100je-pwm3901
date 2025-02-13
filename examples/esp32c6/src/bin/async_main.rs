@@ -12,7 +12,7 @@ use esp_hal::{
     spi::master::Spi,
     timer::{timg::TimerGroup, OneShotTimer},
 };
-use paa5100je_pmw3901::Paa5100je;
+use paa5100je_pmw3901::PixArtSensor;
 use {defmt_rtt as _, esp_backtrace as _};
 
 #[esp_hal_embassy::main]
@@ -43,20 +43,11 @@ async fn main(spawner: Spawner) {
     let timer_group0 = TimerGroup::new(peripherals.TIMG0);
     let mut sensor_timer = OneShotTimer::new(timer_group0.timer0).into_async();
 
-    let mut sensor = Paa5100je::new(spi, &mut sensor_timer).await.unwrap();
+    let mut sensor = PixArtSensor::new_paa5100je(spi, &mut sensor_timer)
+        .await
+        .unwrap();
 
-    // let mut buffer = [0u8; 5];
-    // sensor.read(register::MOTION, &mut buffer).await.unwrap();
-
-    // info!("{:?}", buffer);
-
-    // for reg in 0..buffer.len() {
-    //     sensor
-    //         .read(register::MOTION + reg as u8, &mut [buffer[reg]])
-    //         .await
-    //         .unwrap();
-    //     info!("{:?}", buffer[reg]);
-    // }
+    info!("Sensor ID: {:?}", sensor.id().await.unwrap());
 
     loop {
         // info!("Hello world!");

@@ -8,42 +8,6 @@ use embedded_hal_async::{
     spi::{Operation, SpiDevice},
 };
 
-pub struct Paa5100je<SPI>
-where
-    SPI: SpiDevice,
-{
-    spi: SPI,
-}
-
-impl<SPI> Paa5100je<SPI>
-where
-    SPI: SpiDevice,
-{
-    pub async fn new(spi: SPI, delay_source: &mut impl DelayNs) -> Result<Self, SensorError> {
-        let mut instance = Self { spi };
-
-        instance.write(register::POWER_UP_RESET, 0x5A).await?;
-        delay_source.delay_ms(20).await;
-
-        // Not sure if this is necessary, but this is what the Python driver does and the datasheet is no help whatsoever so...
-        for offset in 0..5u8 {
-            instance.read(register::MOTION + offset).await?;
-        }
-
-        instance.calibrate(delay_source).await?;
-
-        let id = instance.id().await?;
-        if id.product_id != 0x49 || id.revision > 0x01 {
-            error!("Invalid product ID or revision for PAA5100JE: {:?}", id);
-            return Err(SensorError::InvalidId(id));
-        }
-        debug!("Product ID: {}", id.product_id);
-        debug!("Revision: {}", id.revision);
-
-        Ok(instance)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum SensorError {
     Spi(embedded_hal_async::spi::ErrorKind),
@@ -71,9 +35,54 @@ impl From<&[u8; 2]> for Id {
     }
 }
 
-trait PixArtSensor<SPI: SpiDevice> {
-    fn spi(&mut self) -> &mut SPI;
-    async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SPI::Error>;
+pub enum PixArtSensor<SPI: SpiDevice> {
+    Paa5100je(SPI),
+}
+
+impl<SPI: SpiDevice> PixArtSensor<SPI> {
+    pub async fn new_paa5100je(
+        spi: SPI,
+        delay_source: &mut impl DelayNs,
+    ) -> Result<Self, SensorError> {
+        let mut instance = Self::Paa5100je(spi);
+        instance.init(delay_source).await?;
+
+        Ok(instance)
+    }
+
+    pub async fn id(&mut self) -> Result<Id, SensorError> {
+        let mut buffer = [0; 2];
+        self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
+        Ok(Id::from(&buffer))
+    }
+}
+
+impl<SPI: SpiDevice> PixArtSensor<SPI> {
+    fn spi(&mut self) -> &mut SPI {
+        match self {
+            Self::Paa5100je(spi) => spi,
+        }
+    }
+    async fn init(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SensorError> {
+        self.write(register::POWER_UP_RESET, 0x5A).await?;
+        delay_source.delay_ms(20).await;
+
+        // Not sure if this is necessary, but this is what the Python driver does and the datasheet is no help whatsoever so...
+        for offset in 0..5u8 {
+            self.read(register::MOTION + offset).await?;
+        }
+
+        self.calibrate(delay_source).await?;
+
+        let id = self.id().await?;
+        if id.product_id != 0x49 || id.revision > 0x01 {
+            error!("Invalid product ID or revision for PAA5100JE: {:?}", id);
+            return Err(SensorError::InvalidId(id));
+        }
+        debug!("Product ID: {}", id.product_id);
+        debug!("Revision: {}", id.revision);
+        Ok(())
+    }
 
     async fn write(&mut self, register: u8, value: u8) -> Result<(), SPI::Error> {
         trace!("Writing {:02x} to register {:02x}", value, register);
@@ -106,21 +115,6 @@ trait PixArtSensor<SPI: SpiDevice> {
             *word = self.read(initial_address + offset as u8).await?
         }
         Ok(())
-    }
-
-    async fn id(&mut self) -> Result<Id, SensorError> {
-        let mut buffer = [0; 2];
-        self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
-        Ok(Id::from(&buffer))
-    }
-}
-
-impl<SPI> PixArtSensor<SPI> for Paa5100je<SPI>
-where
-    SPI: SpiDevice,
-{
-    fn spi(&mut self) -> &mut SPI {
-        &mut self.spi
     }
 
     async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SPI::Error> {
