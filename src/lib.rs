@@ -8,6 +8,28 @@ use embedded_hal_async::{
     spi::{Operation, SpiDevice},
 };
 
+pub enum PixArtSensor<SPI: SpiDevice> {
+    Paa5100je(SPI),
+}
+
+impl<SPI: SpiDevice> PixArtSensor<SPI> {
+    pub async fn new_paa5100je(
+        spi: SPI,
+        delay_source: &mut impl DelayNs,
+    ) -> Result<Self, SensorError> {
+        let mut instance = Self::Paa5100je(spi);
+        instance.init(delay_source).await?;
+
+        Ok(instance)
+    }
+
+    pub async fn id(&mut self) -> Result<Id, SensorError> {
+        let mut buffer = [0; 2];
+        self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
+        Ok(Id::from(&buffer))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum SensorError {
     Spi(embedded_hal_async::spi::ErrorKind),
@@ -32,28 +54,6 @@ impl From<&[u8; 2]> for Id {
             product_id: buffer[0],
             revision: buffer[1],
         }
-    }
-}
-
-pub enum PixArtSensor<SPI: SpiDevice> {
-    Paa5100je(SPI),
-}
-
-impl<SPI: SpiDevice> PixArtSensor<SPI> {
-    pub async fn new_paa5100je(
-        spi: SPI,
-        delay_source: &mut impl DelayNs,
-    ) -> Result<Self, SensorError> {
-        let mut instance = Self::Paa5100je(spi);
-        instance.init(delay_source).await?;
-
-        Ok(instance)
-    }
-
-    pub async fn id(&mut self) -> Result<Id, SensorError> {
-        let mut buffer = [0; 2];
-        self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
-        Ok(Id::from(&buffer))
     }
 }
 
@@ -295,19 +295,4 @@ pub mod register {
 
     pub const ORIENTATION: u8 = 0x5B;
     pub const INVERSE_PRODUCT_ID: u8 = 0x5F;
-}
-
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
 }
