@@ -28,6 +28,21 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
         Ok(Id::from(&buffer))
     }
+
+    pub async fn set_rotation(&mut self, rotation: RotationDegrees) -> Result<(), SensorError> {
+        const SWAP_XY: u8 = 0b1000_0000;
+        const INVERT_Y: u8 = 0b0100_0000;
+        const INVERT_X: u8 = 0b0010_0000;
+
+        let orientation = match rotation {
+            RotationDegrees::_0 => SWAP_XY | INVERT_X | INVERT_Y,
+            RotationDegrees::_90 => INVERT_Y,
+            RotationDegrees::_180 => SWAP_XY,
+            RotationDegrees::_270 => INVERT_X,
+        };
+
+        self.write(register::ORIENTATION, orientation).await
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -57,6 +72,13 @@ impl From<&[u8; 2]> for Id {
     }
 }
 
+pub enum RotationDegrees {
+    _0 = 0,
+    _90 = 90,
+    _180 = 180,
+    _270 = 270,
+}
+
 impl<SPI: SpiDevice> PixArtSensor<SPI> {
     fn spi(&mut self) -> &mut SPI {
         match self {
@@ -84,9 +106,10 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         Ok(())
     }
 
-    async fn write(&mut self, register: u8, value: u8) -> Result<(), SPI::Error> {
+    async fn write(&mut self, register: u8, value: u8) -> Result<(), SensorError> {
         trace!("Writing {:02x} to register {:02x}", value, register);
-        self.spi().write(&[register | 0x80, value]).await
+        self.spi().write(&[register | 0x80, value]).await?;
+        Ok(())
     }
 
     async fn read(&mut self, register: u8) -> Result<u8, SPI::Error> {
@@ -98,7 +121,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         Ok(buffer[0])
     }
 
-    async fn write_bulk(&mut self, reg_value_pairs: &[(u8, u8)]) -> Result<(), SPI::Error> {
+    async fn write_bulk(&mut self, reg_value_pairs: &[(u8, u8)]) -> Result<(), SensorError> {
         for (register, value) in reg_value_pairs {
             self.write(*register, *value).await?;
         }
@@ -117,7 +140,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         Ok(())
     }
 
-    async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SPI::Error> {
+    async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SensorError> {
         trace!("Injecting the secret sauce...");
         self.write_bulk(&[
             (0x7F, 0x00),
