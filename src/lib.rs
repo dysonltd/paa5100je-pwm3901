@@ -26,11 +26,8 @@ where
         delay_source.delay_ms(20).await;
 
         // Not sure if this is necessary, but this is what the Python driver does and the datasheet is no help whatsoever so...
-        let buffer = 0;
         for offset in 0..5u8 {
-            instance
-                .read(register::MOTION + offset, &mut [buffer])
-                .await?;
+            instance.read(register::MOTION + offset).await?;
         }
 
         instance.calibrate(delay_source).await?;
@@ -83,25 +80,37 @@ trait PixArtSensor<SPI: SpiDevice> {
         self.spi().write(&[register | 0x80, value]).await
     }
 
-    async fn read(&mut self, register: u8, buffer: &mut [u8]) -> Result<(), SPI::Error> {
+    async fn read(&mut self, register: u8) -> Result<u8, SPI::Error> {
+        let mut buffer = [0];
         self.spi()
-            .transaction(&mut [Operation::Write(&[register]), Operation::Read(buffer)])
+            .transaction(&mut [Operation::Write(&[register]), Operation::Read(&mut buffer)])
             .await?;
-        trace!("Read {:?} beginning at register {:02x}", buffer, register);
-        Ok(())
+        trace!("Read {} from register {:02x}", buffer[0], register);
+        Ok(buffer[0])
     }
 
     async fn write_bulk(&mut self, reg_value_pairs: &[(u8, u8)]) -> Result<(), SPI::Error> {
         for (register, value) in reg_value_pairs {
-            self.write(*register, *value).await?
+            self.write(*register, *value).await?;
         }
 
         Ok(())
     }
 
-    async fn id(&mut self) -> Result<Id, SPI::Error> {
+    async fn read_bulk(
+        &mut self,
+        initial_address: u8,
+        buffer: &mut [u8],
+    ) -> Result<(), SensorError> {
+        for (offset, word) in buffer.iter_mut().enumerate() {
+            *word = self.read(initial_address + offset as u8).await?
+        }
+        Ok(())
+    }
+
+    async fn id(&mut self) -> Result<Id, SensorError> {
         let mut buffer = [0; 2];
-        self.read(register::PRODUCT_ID, &mut buffer).await?;
+        self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
         Ok(Id::from(&buffer))
     }
 }
@@ -125,10 +134,13 @@ where
         ])
         .await?;
 
-        let buffer = 0;
-        self.read(0x67, &mut [buffer]).await?;
-        let value = if buffer & 0b10000000 != 0 { 0x04 } else { 0x02 };
-        self.write(0x48, value).await?;
+        let read_value = self.read(0x67).await?;
+        let write_value = if 0 != read_value & 0b1000_0000 {
+            0x04
+        } else {
+            0x02
+        };
+        self.write(0x48, write_value).await?;
 
         self.write_bulk(&[
             (0x7F, 0x00),
@@ -139,10 +151,9 @@ where
         ])
         .await?;
 
-        self.read(0x73, &mut [buffer]).await?;
-        if buffer == 0 {
-            let mut value1 = 0;
-            self.read(0x70, &mut [value1]).await?;
+        let read_value = self.read(0x73).await?;
+        if read_value == 0 {
+            let mut value1 = self.read(0x70).await?;
 
             // The logic of these following tweaks to value1 seem sus, but hey I've got no way of verifying so in Pimoroni we trust...
             if value1 <= 28 {
@@ -153,8 +164,7 @@ where
             }
             value1 = value1.clamp(0, 0x3F);
 
-            let mut value2 = 0;
-            self.read(0x71, &mut [value2]).await?;
+            let mut value2 = self.read(0x71).await?;
 
             value2 = (value2 * 45) / 100;
 
