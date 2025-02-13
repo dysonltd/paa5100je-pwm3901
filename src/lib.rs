@@ -2,7 +2,7 @@
 //!
 #![no_std]
 
-use defmt::trace;
+use defmt::{debug, error, trace, Format};
 use embedded_hal_async::{
     delay::DelayNs,
     spi::{Operation, SpiDevice},
@@ -19,7 +19,7 @@ impl<SPI> Paa5100je<SPI>
 where
     SPI: SpiDevice,
 {
-    pub async fn new(spi: SPI, delay_source: &mut impl DelayNs) -> Result<Self, SPI::Error> {
+    pub async fn new(spi: SPI, delay_source: &mut impl DelayNs) -> Result<Self, SensorError> {
         let mut instance = Self { spi };
 
         instance.write(register::POWER_UP_RESET, 0x5A).await?;
@@ -36,13 +36,42 @@ where
         instance.calibrate(delay_source).await?;
 
         let id = instance.id().await?;
+        if id.product_id != 0x49 || id.revision > 0x01 {
+            error!("Invalid product ID or revision for PAA5100JE: {:?}", id);
+            return Err(SensorError::InvalidId(id));
+        }
+        debug!("Product ID: {}", id.product_id);
+        debug!("Revision: {}", id.revision);
+
         Ok(instance)
     }
 }
 
-struct Id {
+#[derive(Debug, Clone, PartialEq)]
+pub enum SensorError {
+    Spi(embedded_hal_async::spi::ErrorKind),
+    InvalidId(Id),
+}
+
+impl<T: embedded_hal_async::spi::Error> From<T> for SensorError {
+    fn from(value: T) -> Self {
+        Self::Spi(value.kind())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Format)]
+pub struct Id {
     pub product_id: u8,
     pub revision: u8,
+}
+
+impl From<&[u8; 2]> for Id {
+    fn from(buffer: &[u8; 2]) -> Self {
+        Self {
+            product_id: buffer[0],
+            revision: buffer[1],
+        }
+    }
 }
 
 trait PixArtSensor<SPI: SpiDevice> {
@@ -71,13 +100,9 @@ trait PixArtSensor<SPI: SpiDevice> {
     }
 
     async fn id(&mut self) -> Result<Id, SPI::Error> {
-        let id = Id {
-            product_id: 0,
-            revision: 0,
-        };
-        self.read(register::PRODUCT_ID, &mut [id.product_id, id.revision])
-            .await?;
-        Ok(id)
+        let mut buffer = [0; 2];
+        self.read(register::PRODUCT_ID, &mut buffer).await?;
+        Ok(Id::from(&buffer))
     }
 }
 
@@ -243,7 +268,7 @@ where
 #[allow(dead_code)]
 pub mod register {
     pub const PRODUCT_ID: u8 = 0x00;
-    pub const REVISION_ID: u8 = 0x01;
+    pub const PRODUCT_REVISION: u8 = 0x01;
     pub const MOTION: u8 = 0x02;
     pub const DELTAX_L: u8 = 0x03;
     pub const DELTAX_H: u8 = 0x04;
