@@ -24,9 +24,10 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
     }
 
     pub async fn id(&mut self) -> Result<Id, SensorError> {
-        let mut buffer = [0; 2];
-        self.read_bulk(register::PRODUCT_ID, &mut buffer).await?;
-        Ok(Id::from(&buffer))
+        Ok(Id {
+            product_id: self.read(register::PRODUCT_ID).await?,
+            revision: self.read(register::PRODUCT_REVISION).await?,
+        })
     }
 
     pub async fn set_rotation(&mut self, rotation: RotationDegrees) -> Result<(), SensorError> {
@@ -61,15 +62,6 @@ impl<T: embedded_hal_async::spi::Error> From<T> for SensorError {
 pub struct Id {
     pub product_id: u8,
     pub revision: u8,
-}
-
-impl From<&[u8; 2]> for Id {
-    fn from(buffer: &[u8; 2]) -> Self {
-        Self {
-            product_id: buffer[0],
-            revision: buffer[1],
-        }
-    }
 }
 
 pub enum RotationDegrees {
@@ -126,17 +118,6 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
             self.write(*register, *value).await?;
         }
 
-        Ok(())
-    }
-
-    async fn read_bulk(
-        &mut self,
-        initial_address: u8,
-        buffer: &mut [u8],
-    ) -> Result<(), SensorError> {
-        for (offset, word) in buffer.iter_mut().enumerate() {
-            *word = self.read(initial_address + offset as u8).await?
-        }
         Ok(())
     }
 
