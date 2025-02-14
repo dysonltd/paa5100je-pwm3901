@@ -2,6 +2,7 @@
 //!
 #![no_std]
 
+use bytemuck::{Pod, Zeroable};
 use defmt::{debug, error, trace, Format};
 use embedded_hal_async::{
     delay::DelayNs,
@@ -42,7 +43,31 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
             RotationDegrees::_270 => INVERT_X,
         };
 
+        debug!("Setting rotation to {:?}", rotation);
         self.write(register::ORIENTATION, orientation).await
+    }
+
+    pub async fn get_motion(&mut self) -> Result<MotionDelta, SensorError> {
+        let mut buffer = [0; 12];
+        self.spi()
+            .transaction(&mut [
+                Operation::Write(&[register::MOTION_BURST]),
+                Operation::Read(&mut buffer),
+            ])
+            .await?;
+        let motion_raw: MotionRaw = *bytemuck::from_bytes(&buffer);
+
+        if (0 != motion_raw.dr & 0b1000_0000)
+            && !((motion_raw.quality < 0x19) && (motion_raw.shutter_upper == 0x1F))
+        {
+            Ok(MotionDelta {
+                x: motion_raw.x,
+                y: motion_raw.y,
+            })
+        } else {
+            debug!("Motion data failed validation: {}", motion_raw);
+            Err(SensorError::InvalidMotion)
+        }
     }
 }
 
@@ -50,6 +75,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
 pub enum SensorError {
     Spi(embedded_hal_async::spi::ErrorKind),
     InvalidId(Id),
+    InvalidMotion,
 }
 
 impl<T: embedded_hal_async::spi::Error> From<T> for SensorError {
@@ -69,6 +95,26 @@ pub enum RotationDegrees {
     _90 = 90,
     _180 = 180,
     _270 = 270,
+}
+
+pub struct MotionDelta {
+    pub x: i16,
+    pub y: i16,
+}
+
+#[repr(C)]
+#[derive(Pod, Clone, Copy, Zeroable, Debug, PartialEq)]
+struct MotionRaw {
+    dr: u8,
+    obs: u8,
+    x: i16,
+    y: i16,
+    quality: u8,
+    raw_sum: u8,
+    raw_max: u8,
+    raw_min: u8,
+    shutter_upper: u8,
+    shutter_lower: u8,
 }
 
 impl<SPI: SpiDevice> PixArtSensor<SPI> {

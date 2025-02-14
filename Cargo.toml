@@ -8,3 +8,4 @@ authors = ["Pete Kubiak <peter.kubiak@dyson.com>"]
 thiserror = { version = "2.0.11", default-features = false }
 embedded-hal-async = "*"
 defmt = "0.3.10"
+bytemuck = { version = "1.21.0", features = ["derive"] }
