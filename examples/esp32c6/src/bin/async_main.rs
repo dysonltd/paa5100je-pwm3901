@@ -5,10 +5,10 @@ use defmt::info;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
-use embassy_time::{Duration, Timer};
+use embassy_time::Timer;
 use esp_hal::{
     clock::CpuClock,
-    gpio::{Level, Output},
+    gpio::{Input, Level, Output, Pull},
     spi::master::Spi,
     timer::{timg::TimerGroup, OneShotTimer},
 };
@@ -29,6 +29,8 @@ async fn main(spawner: Spawner) {
 
     // TODO: Spawn some tasks
     let _ = spawner;
+
+    let frame_capture = Input::new(peripherals.GPIO8, Pull::Up);
 
     let spi_bus: Mutex<NoopRawMutex, Spi<'_, esp_hal::Async>> = Mutex::new(
         Spi::new(peripherals.SPI2, esp_hal::spi::master::Config::default())
@@ -54,6 +56,18 @@ async fn main(spawner: Spawner) {
             Ok(MotionDelta { x: 0, y: 0 }) => (),
             Ok(motion) => info!("x: {}, y: {}", motion.x, motion.y),
             Err(_) => (),
+        }
+        if frame_capture.is_low() {
+            info!("Capturing frame...");
+            let frame = sensor.capture_frame(&mut sensor_timer).await.unwrap();
+            // I'd like to figure out how to draw this to the terminal with ascii but I don't have time right now
+            info!("Frame:");
+            for row in 0..35 {
+                let start = row * 35;
+                info!("{:?}", frame[start..start + 34]);
+            }
+            Timer::after_secs(2).await;
+            info!("Continuing motion capture");
         }
     }
 
