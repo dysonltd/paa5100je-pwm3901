@@ -57,6 +57,7 @@ async fn main(spawner: Spawner) {
             Ok(motion) => info!("x: {}, y: {}", motion.x, motion.y),
             Err(_) => (),
         }
+
         if frame_capture.is_low() {
             info!("Capturing frame...");
             let frame = sensor.capture_frame(&mut sensor_timer).await.unwrap();

@@ -1,5 +1,9 @@
 //! A no_std driver for the PAA5100JE near-field optical flow sensor
 //!
+//! Yes, there are magic numbers everywhere in this driver.
+//! No, I do not know what they mean.
+//! The datasheet gives next to no useful information, the best I can do is point you to the
+//! Pimoroni Python driver at https://github.com/pimoroni/pmw3901-python/blob/main/pmw3901/__init__.py
 #![no_std]
 
 use bytemuck::{Pod, Zeroable};
@@ -9,13 +13,17 @@ use embedded_hal_async::{
     spi::{Operation, SpiDevice},
 };
 
+/// Size of the sensor: 35 x 35 pixels (presumably. The data sheet doesn't say...)
 const FRAME_SIZE: usize = 1225;
 
+/// Enumeration of the sensor type. This acts as the sensor instance.
 pub enum PixArtSensor<SPI: SpiDevice> {
+    /// PAA5100JE Near-field Optical Flow Sensor
     Paa5100je(SPI),
 }
 
 impl<SPI: SpiDevice> PixArtSensor<SPI> {
+    /// Instantiate and initialise a new PAA5100JE Near-field Optical Flow Sensor
     pub async fn new_paa5100je(
         spi: SPI,
         delay_source: &mut impl DelayNs,
@@ -26,6 +34,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         Ok(instance)
     }
 
+    /// Get the product ID and revision number
     pub async fn id(&mut self) -> Result<Id, SensorError> {
         Ok(Id {
             product_id: self.read(register::PRODUCT_ID).await?,
@@ -33,6 +42,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         })
     }
 
+    /// Set the sensor's rotation
     pub async fn set_rotation(&mut self, rotation: RotationDegrees) -> Result<(), SensorError> {
         const SWAP_XY: u8 = 0b1000_0000;
         const INVERT_Y: u8 = 0b0100_0000;
@@ -49,6 +59,10 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         self.write(register::ORIENTATION, orientation).await
     }
 
+    /// Retrieve motion data from the sensor.
+    ///
+    /// The raw motion data is validated before being returned.
+    /// If the raw data fails validation, SensorError::InvalidMotion is returned.
     pub async fn get_motion(&mut self) -> Result<MotionDelta, SensorError> {
         let mut buffer = [0; 12];
         self.spi()
@@ -72,6 +86,9 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         }
     }
 
+    /// Capture a full frame from the sensor.
+    ///
+    /// Warning: this is very slow.
     pub async fn capture_frame(
         &mut self,
         delay_source: &mut impl DelayNs,
@@ -122,10 +139,14 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
     }
 }
 
+/// Enumeration of possible errors encountered by the sensor driver
 #[derive(Debug, Clone, PartialEq, Format)]
 pub enum SensorError {
+    /// An error occurred during SPI comms.
     Spi(embedded_hal_async::spi::ErrorKind),
+    /// ID or revision number retrieved from the sensor was invalid.
     InvalidId(Id),
+    /// Motion data retrieved from sensor did not pass validation.
     InvalidMotion,
 }
 
@@ -135,12 +156,16 @@ impl<T: embedded_hal_async::spi::Error> From<T> for SensorError {
     }
 }
 
+/// Defines product identification information
 #[derive(Debug, Clone, PartialEq, Format)]
 pub struct Id {
+    /// Product ID number retrieved from the PRODUCT_ID register
     pub product_id: u8,
+    /// Product revision number retrieved from the PRODUCT_REVISION register
     pub revision: u8,
 }
 
+/// Enumeration of valid rotation settings
 pub enum RotationDegrees {
     _0 = 0,
     _90 = 90,
@@ -148,8 +173,11 @@ pub enum RotationDegrees {
     _270 = 270,
 }
 
+/// Defines the structure of motion data
 pub struct MotionDelta {
+    /// Motion in the x direction
     pub x: i16,
+    /// Motion in the y direction
     pub y: i16,
 }
 
@@ -174,6 +202,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
             Self::Paa5100je(spi) => spi,
         }
     }
+
     async fn init(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SensorError> {
         self.write(register::POWER_UP_RESET, 0x5A).await?;
         delay_source.delay_ms(20).await;
@@ -218,6 +247,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         Ok(())
     }
 
+    /// Here be dragons...
     async fn calibrate(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SensorError> {
         trace!("Injecting the secret sauce...");
         self.write_bulk(&[
@@ -371,7 +401,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
 }
 
 #[allow(dead_code)]
-pub mod register {
+mod register {
     pub const PRODUCT_ID: u8 = 0x00;
     pub const PRODUCT_REVISION: u8 = 0x01;
     pub const MOTION: u8 = 0x02;
