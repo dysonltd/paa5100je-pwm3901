@@ -54,7 +54,15 @@ async fn main(spawner: Spawner) {
     loop {
         match sensor.get_motion().await {
             Ok(MotionDelta { x: 0, y: 0 }) => (),
-            Ok(motion) => info!("x: {}, y: {}", motion.x, motion.y),
+            Ok(motion) => {
+                let mut buffer = [0; 32];
+                let string = format_no_std::show(
+                    &mut buffer,
+                    format_args!("x: {:4}, y: {:4}", motion.x, motion.y),
+                )
+                .unwrap();
+                info!("{}", string)
+            }
             Err(_) => (),
         }
 
