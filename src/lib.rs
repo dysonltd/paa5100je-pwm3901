@@ -9,6 +9,8 @@ use embedded_hal_async::{
     spi::{Operation, SpiDevice},
 };
 
+const FRAME_SIZE: usize = 1225;
+
 pub enum PixArtSensor<SPI: SpiDevice> {
     Paa5100je(SPI),
 }
@@ -68,6 +70,55 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
             debug!("Motion data failed validation: {}", motion_raw);
             Err(SensorError::InvalidMotion)
         }
+    }
+
+    pub async fn capture_frame(
+        &mut self,
+        delay_source: &mut impl DelayNs,
+    ) -> Result<[u8; FRAME_SIZE], SensorError> {
+        debug!("Capturing frame...");
+        self.write_bulk(&[
+            (0x7F, 0x07),
+            (0x4C, 0x00),
+            (0x7F, 0x08),
+            (0x6A, 0x38),
+            (0x7F, 0x00),
+            (0x55, 0x04),
+            (0x40, 0x80),
+            (0x4D, 0x11),
+        ])
+        .await?;
+
+        delay_source.delay_ms(10).await;
+
+        self.write_bulk(&[(0x7F, 0x00), (0x58, 0xFF)]).await?;
+
+        // I am slightly suspicious that we're checking against two bits here but this follows the logic
+        // of the Pimoroni driver so we've just got to assume it's correct
+        while self.read(register::RAW_DATA_GRAB_STATUS).await? & 0b1100_0000 == 0 {}
+
+        self.write(register::RAW_DATA_GRAB, 0x00).await?;
+
+        let mut buffer = [0; FRAME_SIZE];
+        let mut index = 0;
+
+        while index < FRAME_SIZE {
+            let value = self.read(register::RAW_DATA_GRAB).await?;
+            match value & 0b1100_0000 {
+                0b0100_0000 => {
+                    buffer[index] &= 0b0000_0011;
+                    buffer[index] |= value << 2; // The Python driver masks the 2 most significant bits before shifting, but I don't think that's necessary in a strongly typed language
+                }
+                0b1000_0000 => {
+                    buffer[index] &= 0b1111_1100;
+                    buffer[index] |= (value & 0b0000_1100) >> 2;
+                    index += 1;
+                }
+                _ => (),
+            }
+        }
+
+        Ok(buffer)
     }
 }
 
