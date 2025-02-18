@@ -71,7 +71,7 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Format)]
 pub enum SensorError {
     Spi(embedded_hal_async::spi::ErrorKind),
     InvalidId(Id),

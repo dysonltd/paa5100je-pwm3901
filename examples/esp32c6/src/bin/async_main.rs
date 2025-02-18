@@ -12,7 +12,7 @@ use esp_hal::{
     spi::master::Spi,
     timer::{timg::TimerGroup, OneShotTimer},
 };
-use paa5100je_pmw3901::PixArtSensor;
+use paa5100je_pmw3901::{MotionDelta, PixArtSensor};
 use {defmt_rtt as _, esp_backtrace as _};
 
 #[esp_hal_embassy::main]
@@ -50,8 +50,11 @@ async fn main(spawner: Spawner) {
     info!("Sensor ID: {:?}", sensor.id().await.unwrap());
 
     loop {
-        // info!("Hello world!");
-        Timer::after(Duration::from_secs(1)).await;
+        match sensor.get_motion().await {
+            Ok(MotionDelta { x: 0, y: 0 }) => (),
+            Ok(motion) => info!("x: {}, y: {}", motion.x, motion.y),
+            Err(_) => (),
+        }
     }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/v0.23.1/examples/src/bin
