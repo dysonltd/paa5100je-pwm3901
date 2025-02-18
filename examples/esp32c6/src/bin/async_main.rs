@@ -31,6 +31,7 @@ async fn main(spawner: Spawner) {
     let _ = spawner;
 
     let frame_capture = Input::new(peripherals.GPIO8, Pull::Up);
+    let wake = Input::new(peripherals.GPIO9, Pull::Up);
 
     let spi_bus: Mutex<NoopRawMutex, Spi<'_, esp_hal::Async>> = Mutex::new(
         Spi::new(peripherals.SPI2, esp_hal::spi::master::Config::default())
@@ -77,6 +78,13 @@ async fn main(spawner: Spawner) {
             }
             Timer::after_secs(2).await;
             info!("Continuing motion capture");
+        }
+
+        if wake.is_low() {
+            info!("Waking the sensor...");
+            sensor.wake(&mut sensor_timer).await.unwrap();
+            Timer::after_secs(1).await;
+            info!("Resuming motion capture");
         }
     }
 

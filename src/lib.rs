@@ -137,6 +137,15 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
 
         Ok(buffer)
     }
+
+    /// Resets and restarts the sensor.
+    ///
+    /// It appears that the sensor shuts itself down if no change has been detected for an extended period.
+    /// Use this function to wake it up again.
+    pub async fn wake(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SensorError> {
+        debug!("Waking the sensor");
+        self.init(delay_source).await
+    }
 }
 
 /// Enumeration of possible errors encountered by the sensor driver
