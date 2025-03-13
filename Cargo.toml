@@ -1,5 +1,5 @@
 [workspace]
-members = ["."]
+exclude = ["examples/*"]
 
 [package]
 name = "paa5100je-pmw3901"
