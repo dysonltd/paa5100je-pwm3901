@@ -1,0 +1,10 @@
+[package]
+name = "paa5100je-pmw3901"
+version = "0.1.0"
+edition = "2021"
+authors = ["Pete Kubiak <peter.kubiak@dyson.com>"]
+
+[dependencies]
+embedded-hal-async = { version = "*", features = ["defmt-03"] }
+defmt = "0.3.10"
+bytemuck = { version = "1.21.0", features = ["derive"] }
