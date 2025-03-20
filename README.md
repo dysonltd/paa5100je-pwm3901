@@ -1,7 +1,6 @@
 # paa5100je-pwm3901 Optical Flow Sensor Rust Driver
 
 [![MegaLinter](https://github.com/dysonltd/paa5100je-pwm3901/actions/workflows/mega-linter.yaml/badge.svg)](https://github.com/dysonltd/paa5100je-pwm3901/actions/workflows/mega-linter.yaml) [![Continuous Build](https://github.com/dysonltd/paa5100je-pwm3901/actions/workflows/continuous-build.yaml/badge.svg)](https://github.com/dysonltd/paa5100je-pwm3901/actions/workflows/continuous-build.yaml)
-Optical Flow Sensor Library
 
 ## Summary
 
