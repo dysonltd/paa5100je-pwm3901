@@ -12,21 +12,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest] #TODO: Add Windows (See Issue) https://github.com/dysonltd/paa5100je-pwm3901/issues/8
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: cargo build --all-targets --all-features
+        run: cargo build
 
   Examples:
     name: ESP32C6 Example
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest] #TODO: Add Windows (See Issue) https://github.com/dysonltd/paa5100je-pwm3901/issues/8
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: |
           cd examples/esp32c6
-          cargo build --all-features
+          cargo build
