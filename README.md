@@ -8,6 +8,11 @@ This is a platform agnostic Rust Driver for the paa5100je-pwm3901 Optical Flow S
 
 ![Optical Flow Breakout Board](./docs/Optical%20Flow%20Breakout%20Board.png)
 
+## Examples
+
+For examples, there is an example for the [ESP32C6](https://unexpectedmaker.com/shop.html#!/TinyC6/p/602208790) which can be found [here](./examples/esp32c6/src/bin/async_main.rs).
+
 ## Useful Links
 
-- [PiHut](https://thepihut.com/products/paa5100je-near-optical-flow-spi-breakout)
+- [PiHut Sensor](https://thepihut.com/products/paa5100je-near-optical-flow-spi-breakout)
+- [Python Library](https://github.com/pimoroni/pmw3901-python)
