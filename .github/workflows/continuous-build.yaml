@@ -17,16 +17,16 @@
           - uses: actions/checkout@v4
           - name: Build
             run: cargo build --all-targets --all-features
-            
+
       All_Targets_ESP32C6:
         name: All Targets Build (Esp32c6)
         runs-on: ${{ matrix.os }}
         strategy:
-                matrix:
-                  os: [ubuntu-latest, windows-latest, macos-latest]
-              steps:
-                - uses: actions/checkout@v4
-                - name: Build
-                  run: |
+          matrix:
+            os: [ubuntu-latest, windows-latest, macos-latest]
+        steps:
+           - uses: actions/checkout@v4
+           - name: Build
+             run: |
                     cd examples/esp32c6
                     cargo build --all-targets --all-features
