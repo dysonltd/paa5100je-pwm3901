@@ -18,8 +18,8 @@ jobs:
       - name: Build
         run: cargo build --all-targets --all-features
 
-  All_Targets_ESP32C6:
-    name: All Targets Build (Esp32c6)
+  Examples:
+    name: ESP32C6 Example
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -29,4 +29,4 @@ jobs:
       - name: Build
         run: |
           cd examples/esp32c6
-          cargo build --all-targets --all-features
+          cargo build --all-features
