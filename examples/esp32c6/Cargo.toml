@@ -23,7 +23,7 @@ esp-backtrace = { version = "0.15.0", features = [
   "panic-handler",
 ] }
 esp-hal = { version = "0.23.1", features = ["defmt", "esp32c6", "unstable"] }
-esp-hal-embassy = { version = "0.6.0", features = ["esp32c6"] }
+esp-hal-embassy = { version = "0.7.0", features = ["esp32c6"] }
 static_cell = { version = "2.1.0", features = ["nightly"] }
 
 paa5100je-pmw3901 = { path = "../../" }
