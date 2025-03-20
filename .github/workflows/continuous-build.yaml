@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest macos-latest] #TODO: Add Windows (See Issue) https://github.com/dysonltd/paa5100je-pwm3901/issues/8
+        os: [ubuntu-latest, macos-latest] #TODO: Add Windows (See Issue) https://github.com/dysonltd/paa5100je-pwm3901/issues/8
     steps:
       - uses: actions/checkout@v4
       - name: Build
