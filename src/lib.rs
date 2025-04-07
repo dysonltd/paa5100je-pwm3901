@@ -230,6 +230,9 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         }
         debug!("Product ID: {}", id.product_id);
         debug!("Revision: {}", id.revision);
+
+        // The default settings do not conform to any orientation, so we set rotation to 0 here to provide a known default.
+        self.set_rotation(RotationDegrees::_0).await?;
         Ok(())
     }
 
