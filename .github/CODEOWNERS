@@ -1,8 +1,9 @@
 # Default owners for all files
 * @petekubiak @ScottGibb @jamessizeland
 
-# Override the default owners and remove ownership for specific files
+# Override the default owners and remove ownership for Cargo.toml files to allow auto dependabot updates
 Cargo.toml
+examples/esp32c6/Cargo.toml
 
 # Override the default owners and remove ownership for the .github/workflows directory
 .github/workflows/

@@ -12,7 +12,7 @@ use esp_hal::{
     spi::master::Spi,
     timer::{timg::TimerGroup, OneShotTimer},
 };
-use paa5100je_pmw3901::{MotionDelta, PixArtSensor};
+use paa5100je_pmw3901::{MotionDelta, PixArtSensor, RotationDegrees};
 use {defmt_rtt as _, esp_backtrace as _};
 
 #[esp_hal_embassy::main]
@@ -49,6 +49,8 @@ async fn main(spawner: Spawner) {
     let mut sensor = PixArtSensor::new_paa5100je(spi, &mut sensor_timer)
         .await
         .unwrap();
+
+    sensor.set_rotation(RotationDegrees::_0).await.unwrap();
 
     info!("Sensor ID: {:?}", sensor.id().await.unwrap());
 
