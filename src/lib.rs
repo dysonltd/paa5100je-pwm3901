@@ -74,10 +74,10 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         let motion_raw: MotionRaw = *bytemuck::from_bytes(&buffer);
 
         let is_valid = (0 != motion_raw.dr & 0b1000_0000)
-            && !((motion_raw.quality < 0x19) && (motion_raw.shutter_upper == 0x1F));
+            && !((motion_raw.quality < 0x19) && (motion_raw.shutter >> 8 == 0x1F));
         core::prelude::v1::Ok(MotionDelta {
-            x: motion_raw.x,
-            y: motion_raw.y,
+            x: motion_raw.delta_x,
+            y: motion_raw.delta_y,
             is_valid,
         })
     }
@@ -188,19 +188,27 @@ pub struct MotionDelta {
     pub is_valid: bool,
 }
 
+/// Raw data from the optical flow sensor
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable, Debug, PartialEq)]
-struct MotionRaw {
+pub struct MotionRaw {
     dr: u8,
-    obs: u8,
-    x: i16,
-    y: i16,
+    /// Contents of the observation register
+    observation: u8,
+    /// Motion in the x direction
+    delta_x: i16,
+    /// Motion in the y direction
+    delta_y: i16,
+    /// Quality of the processed data
     quality: u8,
+    /// Raw summed data
     raw_sum: u8,
+    /// Raw maximum value
     raw_max: u8,
+    /// Raw minimum value
     raw_min: u8,
-    shutter_upper: u8,
-    shutter_lower: u8,
+    /// Shutter value
+    shutter: u16,
 }
 
 impl<SPI: SpiDevice> PixArtSensor<SPI> {
