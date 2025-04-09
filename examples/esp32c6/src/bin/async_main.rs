@@ -56,12 +56,14 @@ async fn main(spawner: Spawner) {
 
     loop {
         match sensor.get_motion().await {
-            Ok(MotionDelta { x: 0, y: 0 }) => (),
             Ok(motion) => {
                 let mut buffer = [0; 32];
                 let string = format_no_std::show(
                     &mut buffer,
-                    format_args!("x: {:4}, y: {:4}", motion.x, motion.y),
+                    format_args!(
+                        "x: {:4}, y: {:4}, v: {}",
+                        motion.x, motion.y, motion.is_valid
+                    ),
                 )
                 .unwrap();
                 info!("{}", string)
@@ -88,6 +90,8 @@ async fn main(spawner: Spawner) {
             Timer::after_secs(1).await;
             info!("Resuming motion capture");
         }
+
+        Timer::after_millis(10).await;
     }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/v0.23.1/examples/src/bin
