@@ -73,17 +73,13 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
             .await?;
         let motion_raw: MotionRaw = *bytemuck::from_bytes(&buffer);
 
-        if (0 != motion_raw.dr & 0b1000_0000)
-            && !((motion_raw.quality < 0x19) && (motion_raw.shutter_upper == 0x1F))
-        {
-            Ok(MotionDelta {
-                x: motion_raw.x,
-                y: motion_raw.y,
-            })
-        } else {
-            debug!("Motion data failed validation: {}", motion_raw);
-            Err(SensorError::InvalidMotion)
-        }
+        let is_valid = (0 != motion_raw.dr & 0b1000_0000)
+            && !((motion_raw.quality < 0x19) && (motion_raw.shutter_upper == 0x1F));
+        core::prelude::v1::Ok(MotionDelta {
+            x: motion_raw.x,
+            y: motion_raw.y,
+            is_valid,
+        })
     }
 
     /// Capture a full frame from the sensor.
@@ -188,6 +184,8 @@ pub struct MotionDelta {
     pub x: i16,
     /// Motion in the y direction
     pub y: i16,
+    /// Indicates whether the data passed validation
+    pub is_valid: bool,
 }
 
 #[repr(C)]
