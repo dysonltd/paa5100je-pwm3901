@@ -62,24 +62,25 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
     /// Retrieve motion data from the sensor.
     ///
     /// The raw motion data is validated before being returned.
-    /// If the raw data fails validation, SensorError::InvalidMotion is returned.
+    /// Validity of the data is given by the is_valid field
     pub async fn get_motion(&mut self) -> Result<MotionDelta, SensorError> {
-        let mut buffer = [0; 12];
-        self.spi()
-            .transaction(&mut [
-                Operation::Write(&[register::MOTION_BURST]),
-                Operation::Read(&mut buffer),
-            ])
-            .await?;
-        let motion_raw: MotionRaw = *bytemuck::from_bytes(&buffer);
-
-        let is_valid = (0 != motion_raw.dr & 0b1000_0000)
-            && !((motion_raw.quality < 0x19) && (motion_raw.shutter >> 8 == 0x1F));
+        let motion_raw = self.read_raw_motion_data().await?;
+        let is_valid = is_data_valid(&motion_raw);
         core::prelude::v1::Ok(MotionDelta {
             x: motion_raw.delta_x,
             y: motion_raw.delta_y,
             is_valid,
         })
+    }
+
+    /// Retrieve all raw data from the sensor.
+    ///
+    /// The raw data is validated before being returned.
+    /// The validity of the data is given by the boolean flag
+    pub async fn get_raw_data(&mut self) -> Result<(MotionRaw, bool), SensorError> {
+        let motion_raw = self.read_raw_motion_data().await?;
+        let is_valid = is_data_valid(&motion_raw);
+        Ok((motion_raw, is_valid))
     }
 
     /// Capture a full frame from the sensor.
@@ -192,23 +193,23 @@ pub struct MotionDelta {
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable, Debug, PartialEq)]
 pub struct MotionRaw {
-    dr: u8,
+    pub dr: u8,
     /// Contents of the observation register
-    observation: u8,
+    pub observation: u8,
     /// Motion in the x direction
-    delta_x: i16,
+    pub delta_x: i16,
     /// Motion in the y direction
-    delta_y: i16,
+    pub delta_y: i16,
     /// Quality of the processed data
-    quality: u8,
+    pub quality: u8,
     /// Raw summed data
-    raw_sum: u8,
+    pub raw_sum: u8,
     /// Raw maximum value
-    raw_max: u8,
+    pub raw_max: u8,
     /// Raw minimum value
-    raw_min: u8,
+    pub raw_min: u8,
     /// Shutter value
-    shutter: u16,
+    pub shutter: u16,
 }
 
 impl<SPI: SpiDevice> PixArtSensor<SPI> {
@@ -263,6 +264,18 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         }
 
         Ok(())
+    }
+
+    async fn read_raw_motion_data(&mut self) -> Result<MotionRaw, SensorError> {
+        let mut buffer = [0; 12];
+        self.spi()
+            .transaction(&mut [
+                Operation::Write(&[register::MOTION_BURST]),
+                Operation::Read(&mut buffer),
+            ])
+            .await?;
+        let motion_raw: MotionRaw = *bytemuck::from_bytes(&buffer);
+        Ok(motion_raw)
     }
 
     /// Here be dragons...
@@ -416,6 +429,10 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
 
         Ok(())
     }
+}
+
+fn is_data_valid(data: &MotionRaw) -> bool {
+    (0 != data.dr & 0b1000_0000) && !((data.quality < 0x19) && (data.shutter >> 8 == 0x1F))
 }
 
 #[allow(dead_code)]
