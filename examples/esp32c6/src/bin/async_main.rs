@@ -30,7 +30,7 @@ async fn main(spawner: Spawner) {
     // TODO: Spawn some tasks
     let _ = spawner;
 
-    let frame_capture = Input::new(peripherals.GPIO8, Pull::Up);
+    let frame_capture = Input::new(peripherals.GPIO3, Pull::Up);
     let wake = Input::new(peripherals.GPIO9, Pull::Up);
 
     let spi_bus: Mutex<NoopRawMutex, Spi<'_, esp_hal::Async>> = Mutex::new(
@@ -54,6 +54,10 @@ async fn main(spawner: Spawner) {
 
     info!("Sensor ID: {:?}", sensor.id().await.unwrap());
 
+    sensor.set_resolution(0xFF).await.unwrap();
+
+    let mut resolution = 0xA8;
+
     loop {
         match sensor.get_motion().await {
             Ok(MotionDelta { x: 0, y: 0 }) => (),
@@ -70,16 +74,10 @@ async fn main(spawner: Spawner) {
         }
 
         if frame_capture.is_low() {
-            info!("Capturing frame...");
-            let frame = sensor.capture_frame(&mut sensor_timer).await.unwrap();
-            // I'd like to figure out how to draw this to the terminal with ascii but I don't have time right now
-            info!("Frame:");
-            for row in 0..35 {
-                let start = row * 35;
-                info!("{:?}", frame[start..start + 34]);
-            }
-            Timer::after_secs(2).await;
-            info!("Continuing motion capture");
+            resolution = if resolution == 0xA8 { 0xFF } else { 0xA8 };
+            info!("Setting resolution to {}", resolution);
+            sensor.set_resolution(resolution).await.unwrap();
+            Timer::after_millis(400).await;
         }
 
         if wake.is_low() {

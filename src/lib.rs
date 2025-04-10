@@ -146,6 +146,10 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
         debug!("Waking the sensor");
         self.init(delay_source).await
     }
+
+    pub async fn set_resolution(&mut self, raw_setting: u8) -> Result<(), SensorError> {
+        self.write(register::RESOLUTION, raw_setting).await
+    }
 }
 
 /// Enumeration of possible errors encountered by the sensor driver
@@ -432,6 +436,8 @@ mod register {
 
     pub const POWER_UP_RESET: u8 = 0x3A;
     pub const SHUTDOWN: u8 = 0x3B;
+
+    pub const RESOLUTION: u8 = 0x4E;
 
     pub const RAW_DATA_GRAB: u8 = 0x58;
     pub const RAW_DATA_GRAB_STATUS: u8 = 0x59;
