@@ -29,9 +29,9 @@ async fn main(spawner: Spawner) {
 
     // TODO: Spawn some tasks
     let _ = spawner;
-
-    let frame_capture = Input::new(peripherals.GPIO8, Pull::Up);
-    let wake = Input::new(peripherals.GPIO9, Pull::Up);
+    let input_config = esp_hal::gpio::InputConfig::default().with_pull(Pull::Up);
+    let frame_capture = Input::new(peripherals.GPIO8, input_config);
+    let wake = Input::new(peripherals.GPIO9, input_config);
 
     let spi_bus: Mutex<NoopRawMutex, Spi<'_, esp_hal::Async>> = Mutex::new(
         Spi::new(peripherals.SPI2, esp_hal::spi::master::Config::default())
@@ -41,7 +41,8 @@ async fn main(spawner: Spawner) {
             .with_sck(peripherals.GPIO19)
             .into_async(),
     );
-    let cs = Output::new(peripherals.GPIO18, Level::High);
+    let output_config = esp_hal::gpio::OutputConfig::default();
+    let cs = Output::new(peripherals.GPIO18, Level::High, output_config);
     let spi = SpiDevice::new(&spi_bus, cs);
     let timer_group0 = TimerGroup::new(peripherals.TIMG0);
     let mut sensor_timer = OneShotTimer::new(timer_group0.timer0).into_async();
@@ -90,5 +91,5 @@ async fn main(spawner: Spawner) {
         }
     }
 
-    // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/v0.23.1/examples/src/bin
+    // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-beta.0/examples/src/bin
 }
