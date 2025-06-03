@@ -7,7 +7,7 @@ version: 2
 updates:
   - package-ecosystem: "cargo"
     directories:
-      - "/" # Library Crate      
+      - "/" # Library Crate
       - "**/*"
     schedule:
       interval: "weekly"
