@@ -9,10 +9,15 @@ use embassy_time::Timer;
 use esp_hal::{
     clock::CpuClock,
     gpio::{Input, Level, Output, Pull},
-    spi::master::Spi,
+    spi::{
+        master::{Config, Spi},
+        Mode,
+    },
+    time::Rate,
     timer::{timg::TimerGroup, OneShotTimer},
 };
 use paa5100je_pmw3901::{MotionDelta, PixArtSensor, RotationDegrees};
+use static_cell::StaticCell;
 use {defmt_rtt as _, esp_backtrace as _};
 
 #[esp_hal_embassy::main]
@@ -33,17 +38,28 @@ async fn main(spawner: Spawner) {
     let frame_capture = Input::new(peripherals.GPIO8, input_config);
     let wake = Input::new(peripherals.GPIO9, input_config);
 
-    let spi_bus: Mutex<NoopRawMutex, Spi<'_, esp_hal::Async>> = Mutex::new(
-        Spi::new(peripherals.SPI2, esp_hal::spi::master::Config::default())
-            .unwrap()
+    let spi_bus = {
+        static SPI_BUS: StaticCell<Mutex<NoopRawMutex, Spi<'_, esp_hal::Async>>> =
+            StaticCell::new();
+        SPI_BUS.init(Mutex::new(
+            defmt::expect!(
+                Spi::new(
+                    peripherals.SPI2,
+                    Config::default()
+                        .with_mode(Mode::_3)
+                        .with_frequency(Rate::from_mhz(2))
+                ),
+                "Initialisation of the SPI bus should not fail"
+            )
             .with_mosi(peripherals.GPIO21)
             .with_miso(peripherals.GPIO20)
             .with_sck(peripherals.GPIO19)
             .into_async(),
-    );
+        ))
+    };
     let output_config = esp_hal::gpio::OutputConfig::default();
     let cs = Output::new(peripherals.GPIO18, Level::High, output_config);
-    let spi = SpiDevice::new(&spi_bus, cs);
+    let spi = SpiDevice::new(spi_bus, cs);
     let timer_group0 = TimerGroup::new(peripherals.TIMG0);
     let mut sensor_timer = OneShotTimer::new(timer_group0.timer0).into_async();
 
