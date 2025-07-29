@@ -170,7 +170,7 @@ jobs:
       - name: Rustfmt check on esp32c6 example
         run: |
           # Ensure the nightly toolchain is used for formatting
-          rustup toolchain install nightly
+          rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
           cd examples/esp32c6
           cargo fmt --manifest-path Cargo.toml -- --check
 
@@ -183,6 +183,6 @@ jobs:
       - name: Clippy check on esp32c6 example
         run: |
           # Ensure the nightly toolchain is used for Clippy
-          rustup toolchain install nightly
+          rustup component add --toolchain nightly-x86_64-unknown-linux-gnu clippy
           cd examples/esp32c6
           cargo clippy -- -D warnings
