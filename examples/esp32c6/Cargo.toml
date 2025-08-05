@@ -30,7 +30,7 @@ static_cell = { version = "2.1.0", features = ["nightly"] }
 paa5100je-pmw3901 = { path = "../../" }
 embassy-sync = { version = "0.7.0", features = ["defmt"] }
 embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
-embassy-embedded-hal = { version = "0.3.0", features = ["defmt"] }
+embassy-embedded-hal = { version = "0.4.0", features = ["defmt"] }
 embedded-hal-async = { version = "1.0.0", features = ["defmt-03"] }
 format_no_std = "1.2.0"
 
