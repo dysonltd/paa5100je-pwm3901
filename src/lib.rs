@@ -6,12 +6,34 @@
 //! Pimoroni Python driver at https://github.com/pimoroni/pmw3901-python/blob/main/pmw3901/__init__.py
 #![no_std]
 
+#[cfg(not(feature = "defmt"))]
+macro_rules! debug {
+    ($($t:tt)*) => {};
+}
+#[cfg(not(feature = "defmt"))]
+macro_rules! error {
+    ($($t:tt)*) => {};
+}
+#[cfg(not(feature = "defmt"))]
+macro_rules! trace {
+    ($($t:tt)*) => {};
+}
+
 use bytemuck::{Pod, Zeroable};
+#[cfg(feature = "defmt")]
 use defmt::{debug, error, trace, Format};
-use embedded_hal_async::{
+#[cfg(feature = "sync")]
+pub use embedded_hal::{
     delay::DelayNs,
     spi::{Operation, SpiDevice},
 };
+#[cfg(not(feature = "sync"))]
+pub use embedded_hal_async::{
+    delay::DelayNs,
+    spi::{Operation, SpiDevice},
+};
+
+use maybe_async::maybe_async;
 
 /// Size of the sensor: 35 x 35 pixels (presumably. The data sheet doesn't say...)
 const FRAME_SIZE: usize = 1225;
@@ -22,6 +44,7 @@ pub enum PixArtSensor<SPI: SpiDevice> {
     Paa5100je(SPI),
 }
 
+#[maybe_async]
 impl<SPI: SpiDevice> PixArtSensor<SPI> {
     /// Instantiate and initialise a new PAA5100JE Near-field Optical Flow Sensor
     pub async fn new_paa5100je(
@@ -149,7 +172,8 @@ impl<SPI: SpiDevice> PixArtSensor<SPI> {
 }
 
 /// Enumeration of possible errors encountered by the sensor driver
-#[derive(Debug, Clone, PartialEq, Format)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub enum SensorError {
     /// An error occurred during SPI comms.
     Spi(embedded_hal_async::spi::ErrorKind),
@@ -166,7 +190,8 @@ impl<T: embedded_hal_async::spi::Error> From<T> for SensorError {
 }
 
 /// Defines product identification information
-#[derive(Debug, Clone, PartialEq, Format)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub struct Id {
     /// Product ID number retrieved from the PRODUCT_ID register
     pub product_id: u8,
@@ -175,7 +200,7 @@ pub struct Id {
 }
 
 /// Enumeration of valid rotation settings
-#[derive(Format)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub enum RotationDegrees {
     _0 = 0,
     _90 = 90,
@@ -192,7 +217,8 @@ pub struct MotionDelta {
 }
 
 #[repr(C)]
-#[derive(Pod, Clone, Copy, Zeroable, Debug, PartialEq, Format)]
+#[derive(Pod, Clone, Copy, Zeroable, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 struct MotionRaw {
     dr: u8,
     obs: u8,
@@ -206,6 +232,7 @@ struct MotionRaw {
     shutter_lower: u8,
 }
 
+#[maybe_async]
 impl<SPI: SpiDevice> PixArtSensor<SPI> {
     fn spi(&mut self) -> &mut SPI {
         match self {

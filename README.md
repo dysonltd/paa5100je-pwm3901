@@ -10,7 +10,10 @@ This is a platform agnostic Rust Driver for the paa5100je-pwm3901 Optical Flow S
 
 ## Examples
 
-For examples, there is an example for the [ESP32C6](https://unexpectedmaker.com/shop.html#!/TinyC6/p/602208790) which can be found [here](./examples/esp32c6/src/bin/async_main.rs).
+For examples, see list below:
+- [ESP32C6](https://unexpectedmaker.com/shop.html#!/TinyC6/p/602208790) which can be found [here](./examples/esp32c6/src/bin/async_main.rs).
+- [RP2040](./examples/rp2040/src/main.rs) using the async SPI driver.
+- [Linux Arm](./examples/linux-arm/src/main.rs) running in blocking mode.
 
 ## Further Documentation
 

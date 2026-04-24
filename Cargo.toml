@@ -4,7 +4,14 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Pete Kubiak <peter.kubiak@dyson.com>"]
 
+[features]
+sync = ["maybe-async/is_sync"]
+default = ["defmt"]
+defmt = ["dep:defmt"]
+
 [dependencies]
-embedded-hal-async = { version = "*", features = ["defmt-03"] }
-defmt = "1.0.1"
+maybe-async = { version = "0.2.10" }
+embedded-hal = { version = "*", features = ["defmt-03"] }
+embedded-hal-async = { version = "*" , features = ["defmt-03"]}
+defmt = { version =  "1.0.1", optional = true }
 bytemuck = { version = "1.21.0", features = ["derive"] }

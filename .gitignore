@@ -2,3 +2,6 @@
 
 Cargo.lock
 megalinter-reports
+
+# do not version Jetbrains IDEs metadata
+.idea
